@@ -13,7 +13,7 @@ const firebaseConfig = {
   messagingSenderId: "957899568066",
   appId: "1:957899568066:web:2a10dfae2969f8b1fc1c5b"
 };
-
+// initialize
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://social-app-b9983.firebaseio.com"
@@ -21,6 +21,7 @@ admin.initializeApp({
 firebase.initializeApp(firebaseConfig);
 const db = admin.firestore();
 
+// get all screams endpoint
 app.get("/screams", (request, response) => {
   db.collection("screams")
     .orderBy("createdAt", "desc")
@@ -40,6 +41,7 @@ app.get("/screams", (request, response) => {
     .catch(err => console.error(err));
 });
 
+// put new scream endpoint
 app.post("/scream", (request, response) => {
   const newScream = {
     body: request.body.body,
@@ -57,6 +59,20 @@ app.post("/scream", (request, response) => {
       response.status(500).json({ error: "failed to create scream" });
     });
 });
+
+// helpers
+const isEmpty = string => {
+  if (string.trim() === "") return true;
+  else return false;
+};
+
+const isEmail = email => {
+  const regEx = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
+  if (email.match(regEx)) return true;
+  else return false;
+};
+
+// singup endpoint
 app.post("/singup", (request, response) => {
   const newUser = {
     email: request.body.email,
@@ -64,8 +80,21 @@ app.post("/singup", (request, response) => {
     confirmPassword: request.body.confirmPassword,
     handle: request.body.handle
   };
-  // TODO: validate data
 
+  // validation
+  let errors = {};
+  if (isEmpty(newUser.email)) {
+    errors.email = "Empty value";
+  } else if (!isEmail(newUser.email)) {
+    errors.email = "Invalid value";
+  }
+  if (isEmpty(newUser.password)) errors.password = "Empty value";
+  if (newUser.password !== newUser.confirmPassword)
+    errors.confirmPassword = "Password must match";
+  if (isEmpty(newUser.handle)) errors.handle = "Empty value";
+  if (Object.keys(errors).length > 0) return response.status(400).json(errors);
+
+  // add to db
   let token, userId;
   db.doc(`/users/${newUser.handle}`)
     .get()
@@ -108,4 +137,39 @@ app.post("/singup", (request, response) => {
     });
 });
 
+// login endpoint
+app.post("/login", (request, response) => {
+  const user = {
+    email: request.body.email,
+    password: request.body.password
+  };
+
+  let errors = {};
+
+  if (!isEmail(user.email)) errors.email = "Invalid value";
+  if (isEmpty(user.email)) errors.email = "Empty value";
+  if (isEmpty(user.password)) errors.password = "Empty value";
+
+  if (Object.keys(errors).length > 0) return response.status(400).json(errors);
+
+  firebase
+    .auth()
+    .signInWithEmailAndPassword(user.email, user.password)
+    .then(data => {
+      return data.user.getIdToken();
+    })
+    .then(idToken => {
+      return response.json({ token: idToken });
+    })
+    .catch(error => {
+      console.error(error);
+      if (error.code === "auth/wrong-password") {
+        return response
+          .status(403)
+          .json({ general: "Wrong credentials, please try again" });
+      } else return response.status(500).json({ error: error.code });
+    });
+});
+
+// main api route endpoint
 exports.api = functions.region("europe-west1").https.onRequest(app);
