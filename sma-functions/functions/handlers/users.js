@@ -1,32 +1,23 @@
-const { db } = require("../util/admin");
-const { isEmail, isEmpty } = require("../helpers");
+const { adminm, db } = require("../util/admin");
+const { validateSignUpData, validateLoginData } = require("../util/validators");
 const firebase = require("firebase");
 
-exports.singup = (request, response) => {
+//const admin = require("firebase-admin");
+
+exports.signup = (request, response) => {
   const newUser = {
     email: request.body.email,
     password: request.body.password,
     confirmPassword: request.body.confirmPassword,
     handle: request.body.handle
   };
-
-  // validation
-  let errors = {};
-  if (isEmpty(newUser.email)) {
-    errors.email = "Empty value";
-  } else if (!isEmail(newUser.email)) {
-    errors.email = "Invalid value";
-  }
-  if (isEmpty(newUser.password)) errors.password = "Empty value";
-  if (newUser.password !== newUser.confirmPassword)
-    errors.confirmPassword = "Password must match";
-  if (isEmpty(newUser.handle)) errors.handle = "Empty value";
-  if (Object.keys(errors).length > 0) return response.status(400).json(errors);
+  const { valid, errors } = validateSignUpData(newUser);
+  if (!valid) return response.status(400).json(errors);
 
   // add to admin.db
   let token, userId;
-  admin.db
-    .doc(`/users/${newUser.handle}`)
+
+  db.doc(`/users/${newUser.handle}`)
     .get()
     .then(doc => {
       if (doc.exists) {
@@ -51,8 +42,7 @@ exports.singup = (request, response) => {
         createdAt: new Date().toISOString(),
         userId
       };
-      admin.db
-        .doc(`/users/${newUser.handle}`)
+      db.doc(`/users/${newUser.handle}`)
         .set(userCredentials)
         .then(data => {
           return response.status(201).json({ token });
@@ -67,19 +57,14 @@ exports.singup = (request, response) => {
       }
     });
 };
+
 exports.login = (request, response) => {
   const user = {
     email: request.body.email,
     password: request.body.password
   };
-
-  let errors = {};
-
-  if (!isEmail(user.email)) errors.email = "Invalid value";
-  if (isEmpty(user.email)) errors.email = "Empty value";
-  if (isEmpty(user.password)) errors.password = "Empty value";
-
-  if (Object.keys(errors).length > 0) return response.status(400).json(errors);
+  const { valid, errors } = validateLoginData(user);
+  if (!valid) return response.status(400).json(errors);
 
   firebase
     .auth()

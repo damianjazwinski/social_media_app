@@ -1,5 +1,4 @@
 const { admin, db } = require("../util/admin");
-const { isEmail, isEmpty } = require("../helpers");
 
 exports.getAllScreams = (request, response) => {
   db.collection("screams")

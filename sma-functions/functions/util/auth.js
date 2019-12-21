@@ -1,16 +1,4 @@
-const { db, admin } = require("./util/admin");
-//-----------------------------
-// helpers
-exports.isEmpty = givenString => {
-  if (givenString.trim() === "") return true;
-  else return false;
-};
-
-exports.isEmail = email => {
-  const regEx = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/;
-  if (email.match(regEx)) return true;
-  else return false;
-};
+const { admin, db } = require("../util/admin");
 
 exports.FBAuth = (request, response, next) => {
   let idToken;
